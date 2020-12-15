@@ -1,9 +1,9 @@
 spring:
   datasource:
 #    url: 'jdbc:postgresql://localhost:5432/hapi_r4'
-    url: 'jdbc:postgresql://dev-ng-aurora-cluster.cluster-cfktt7qywuam.us-east-1.rds.amazonaws.com:5432/hapi_r4'
-    username: root
-    password: PX9yszMIvPvRq1d3lhsB
+    url: !ENV ${FHIR_DB_URL} # 'jdbc:postgresql://dev-ng-aurora-cluster.cluster-cfktt7qywuam.us-east-1.rds.amazonaws.com:5432/hapi_r4'
+    username: !ENV ${FHIR_DB_USER}
+    password: !ENV ${FHIR_DB_PASSWORD}
     driverClassName: org.postgresql.Driver
 #    url: 'jdbc:h2:file:./target/database/h2'
 #    #url: jdbc:h2:mem:test_mem
