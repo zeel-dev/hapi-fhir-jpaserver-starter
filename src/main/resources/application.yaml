@@ -1,15 +1,9 @@
 spring:
   datasource:
-#    url: 'jdbc:postgresql://localhost:5432/hapi_r4'
-    url: !ENV ${FHIR_DB_URL} # 'jdbc:postgresql://dev-ng-aurora-cluster.cluster-cfktt7qywuam.us-east-1.rds.amazonaws.com:5432/hapi_r4'
-    username: !ENV ${FHIR_DB_USER}
-    password: !ENV ${FHIR_DB_PASSWORD}
+    url: ${FHIR_DB_URL}
+    username: ${FHIR_DB_USER}
+    password: ${FHIR_DB_PASSWORD}
     driverClassName: org.postgresql.Driver
-#    url: 'jdbc:h2:file:./target/database/h2'
-#    #url: jdbc:h2:mem:test_mem
-#    username: sa
-#    password: null
-#    driverClassName: org.h2.Driver
 #    max-active: 15
 #  jpa:
 #    properties:
