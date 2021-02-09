@@ -359,3 +359,32 @@ EXPOSE 8080
 WORKDIR /app
 CMD ["main.war"]
 ```
+
+### Dropping and readding the database
+
+Make sure no one can connect to this database. You can use one of following methods (the second seems safer, but does not prevent connections from superusers).
+```postgres
+/* Method 1: update system catalog */
+UPDATE pg_database SET datallowconn = 'false' WHERE datname = 'mydb';
+
+/* Method 2: use ALTER DATABASE. Superusers still can connect!
+ALTER DATABASE mydb CONNECTION LIMIT 0; */
+```
+
+Force disconnection of all clients connected to this database, using pg_terminate_backend.
+```postgres
+  SELECT pg_terminate_backend(pid)
+  FROM pg_stat_activity
+  WHERE datname = 'mydb';
+
+  /* For old versions of PostgreSQL (up to 9.1), change pid to procpid:
+
+  SELECT pg_terminate_backend(procpid)
+  FROM pg_stat_activity
+  WHERE datname = 'mydb'; */
+```
+
+Drop the database.
+```postgres
+  DROP DATABASE mydb;
+```
