@@ -189,6 +189,16 @@ spring:
     password: admin
     driverClassName: com.mysql.jdbc.Driver
 ```
+On some systems, it might be necessary to override hibernate's default naming strategy. The naming strategy must be set using spring.jpa.hibernate.physical_naming_strategy. 
+
+```yaml
+spring:
+  jpa:
+    hibernate.physical_naming_strategy: NAME_OF_PREFERRED_STRATEGY
+```
+On linux systems or when using docker mysql containers, it will be necessary to review the case-sensitive setup for
+mysql schema identifiers. See  https://dev.mysql.com/doc/refman/8.0/en/identifier-case-sensitivity.html. We suggest you
+set `lower_case_table_names=1` during mysql startup.
 
 ### PostgreSQL configuration
 
@@ -310,15 +320,19 @@ It is important to use MySQL5Dialect when using MySQL version 5+.
 
 The server may be configured with subscription support by enabling properties in the [application.yaml](https://github.com/hapifhir/hapi-fhir-jpaserver-starter/blob/master/src/main/resources/application.yaml) file:
 
-- `hapi.fhir.subscription.resthook.enabled` - Enables REST Hook subscriptions, where the server will make an outgoing connection to a remote REST server
+- `hapi.fhir.subscription.resthook_enabled` - Enables REST Hook subscriptions, where the server will make an outgoing connection to a remote REST server
 
 - `hapi.fhir.subscription.email.*` - Enables email subscriptions. Note that you must also provide the connection details for a usable SMTP server.
 
-- `hapi.fhir.subscription.websocket.enabled` - Enables websocket subscriptions. With this enabled, your server will accept incoming websocket connections on the following URL (this example uses the default context path and port, you may need to tweak depending on your deployment environment): [ws://localhost:8080/websocket](ws://localhost:8080/websocket)
+- `hapi.fhir.subscription.websocket_enabled` - Enables websocket subscriptions. With this enabled, your server will accept incoming websocket connections on the following URL (this example uses the default context path and port, you may need to tweak depending on your deployment environment): [ws://localhost:8080/websocket](ws://localhost:8080/websocket)
 
-## Enabling EMPI
+## Enabling CQL
 
-Set `hapi.fhir.empi_enabled=true` in the [application.yaml](https://github.com/hapifhir/hapi-fhir-jpaserver-starter/blob/master/src/main/resources/application.yaml) file to enable EMPI on this server.  The EMPI matching rules are configured in [empi-rules.json](https://github.com/hapifhir/hapi-fhir-jpaserver-starter/blob/master/src/main/resources/empi-rules.json).  The rules in this example file should be replaced with actual matching rules appropriate to your data. Note that EMPI relies on subscriptions, so for EMPI to work, subscriptions must be enabled. 
+Set `hapi.fhir.cql_enabled=true` in the [application.yaml](https://github.com/hapifhir/hapi-fhir-jpaserver-starter/blob/master/src/main/resources/application.yaml) file to enable [Clinical Quality Language](https://cql.hl7.org/) on this server.
+
+## Enabling MDM (EMPI)
+
+Set `hapi.fhir.mdm_enabled=true` in the [application.yaml](https://github.com/hapifhir/hapi-fhir-jpaserver-starter/blob/master/src/main/resources/application.yaml) file to enable MDM on this server.  The MDM matching rules are configured in [mdm-rules.json](https://github.com/hapifhir/hapi-fhir-jpaserver-starter/blob/master/src/main/resources/mdm-rules.json).  The rules in this example file should be replaced with actual matching rules appropriate to your data. Note that MDM relies on subscriptions, so for MDM to work, subscriptions must be enabled.
 
 ## Using Elasticsearch
 
@@ -328,9 +342,10 @@ For example:
 
 ```properties
 elasticsearch.enabled=true
-elasticsearch.rest_url=http://localhost:9200
+elasticsearch.rest_url=localhost:9200
 elasticsearch.username=SomeUsername
 elasticsearch.password=SomePassword
+elasticsearch.protocol=http
 elasticsearch.required_index_status=YELLOW
 elasticsearch.schema_management_strategy=CREATE
 ```
@@ -339,52 +354,25 @@ elasticsearch.schema_management_strategy=CREATE
 
 Set `hapi.fhir.lastn_enabled=true` in the [application.yaml](https://github.com/hapifhir/hapi-fhir-jpaserver-starter/blob/master/src/main/resources/application.yaml) file to enable the $lastn operation on this server.  Note that the $lastn operation relies on Elasticsearch, so for $lastn to work, indexing must be enabled using Elasticsearch.
 
-## Example of a Dockerfile based on distroless images (for lower footprint and improved security)
+## Changing cached search results time
 
-```code
-FROM maven:3.6.3-jdk-11-slim as build-hapi
-WORKDIR /tmp/hapi-fhir-jpaserver-starter
+It is possible to change the cached search results time. The option `reuse_cached_search_results_millis` in the [application.yaml] is 6000 miliseconds by default.
+Set `reuse_cached_search_results_millis: -1` in the [application.yaml] file to ignore the cache time every search. 
 
-COPY pom.xml .
-RUN mvn -ntp dependency:go-offline
+## Build the distroless variant of the image (for lower footprint and improved security)
 
-COPY src/ /tmp/hapi-fhir-jpaserver-starter/src/
-RUN mvn clean package spring-boot:repackage -Pboot
+The default Dockerfile contains a `release-distroless` stage to build a variant of the image
+using the `gcr.io/distroless/java-debian10:11` base image:
 
-FROM gcr.io/distroless/java:11
-
-COPY --from=build-hapi /tmp/hapi-fhir-jpaserver-starter/target/ROOT.war /app/main.war
-
-EXPOSE 8080
-WORKDIR /app
-CMD ["main.war"]
+```sh
+docker build --target=release-distroless -t hapi-fhir:distroless .
 ```
 
-### Dropping and readding the database
+Note that distroless images are also automatically build and pushed to the container registry,
+see the `-distroless` suffix in the image tags.
 
-Make sure no one can connect to this database. You can use one of following methods (the second seems safer, but does not prevent connections from superusers).
-```postgres
-/* Method 1: update system catalog */
-UPDATE pg_database SET datallowconn = 'false' WHERE datname = 'mydb';
+## Adding custom operations
 
-/* Method 2: use ALTER DATABASE. Superusers still can connect!
-ALTER DATABASE mydb CONNECTION LIMIT 0; */
-```
+To add a custom operation, refer to the documentation in the core hapi-fhir libraries [here](https://hapifhir.io/hapi-fhir/docs/server_plain/rest_operations_operations.html).
 
-Force disconnection of all clients connected to this database, using pg_terminate_backend.
-```postgres
-  SELECT pg_terminate_backend(pid)
-  FROM pg_stat_activity
-  WHERE datname = 'mydb';
-
-  /* For old versions of PostgreSQL (up to 9.1), change pid to procpid:
-
-  SELECT pg_terminate_backend(procpid)
-  FROM pg_stat_activity
-  WHERE datname = 'mydb'; */
-```
-
-Drop the database.
-```postgres
-  DROP DATABASE mydb;
-```
+Within `hapi-fhir-jpaserver-starter`, create a generic class (that does not extend or implement any classes or interfaces), add the `@Operation` as a method within the generic class, and then register the class as a provider using `RestfulServer.registerProvider()`.

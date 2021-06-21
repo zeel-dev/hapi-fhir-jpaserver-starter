@@ -37,7 +37,8 @@ import org.springframework.test.context.junit.jupiter.SpringExtension;
     "spring.batch.job.enabled=false",
     "spring.datasource.url=jdbc:h2:mem:dbr5",
     "hapi.fhir.fhir_version=r5",
-    "hapi.fhir.subscription.websocket_enabled=true"
+    "hapi.fhir.subscription.websocket_enabled=true",
+	 "hapi.fhir.subscription.websocket_enabled=true"
   })
 public class ExampleServerR5IT {
 
@@ -66,16 +67,18 @@ public class ExampleServerR5IT {
   public void testWebsocketSubscription() throws Exception {
 
     /*
-     * Create topic
+     * Create topic (will be contained in subscription)
      */
     SubscriptionTopic topic = new SubscriptionTopic();
-    topic.getResourceTrigger().getQueryCriteria().setCurrent("Observation?status=final");
+    topic.setId("#1");
+    topic.getResourceTriggerFirstRep().getQueryCriteria().setCurrent("Observation?status=final");
 
     /*
      * Create subscription
      */
     Subscription subscription = new Subscription();
-    subscription.getTopic().setResource(topic);
+    subscription.getContained().add(topic);
+    subscription.setTopic("#1");
     subscription.setReason("Monitor new neonatal function (note, age will be determined by the monitor)");
     subscription.setStatus(Enumerations.SubscriptionState.REQUESTED);
     subscription.getChannelType()

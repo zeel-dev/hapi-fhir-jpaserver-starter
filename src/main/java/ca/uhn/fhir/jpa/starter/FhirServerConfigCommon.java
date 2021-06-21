@@ -3,7 +3,7 @@ package ca.uhn.fhir.jpa.starter;
 import ca.uhn.fhir.jpa.api.config.DaoConfig;
 import ca.uhn.fhir.jpa.binstore.DatabaseBlobBinaryStorageSvcImpl;
 import ca.uhn.fhir.jpa.binstore.IBinaryStorageSvc;
-import ca.uhn.fhir.jpa.config.HibernateDialectProvider;
+import ca.uhn.fhir.jpa.config.HibernatePropertiesProvider;
 import ca.uhn.fhir.jpa.model.config.PartitionSettings;
 import ca.uhn.fhir.jpa.model.config.PartitionSettings.CrossPartitionReferenceMode;
 import ca.uhn.fhir.jpa.model.entity.ModelConfig;
@@ -37,8 +37,8 @@ public class FhirServerConfigCommon {
     ourLog.info("Server configured to " + (appProperties.getAllow_multiple_delete() ? "allow" : "deny") + " multiple deletes");
     ourLog.info("Server configured to " + (appProperties.getAllow_external_references() ? "allow" : "deny") + " external references");
     ourLog.info("Server configured to " + (appProperties.getExpunge_enabled() ? "enable" : "disable") + " expunges");
-    ourLog.info("Server configured to " + (appProperties.getAllow_placeholder_references() ? "allow" : "deny") + " placeholder references");
     ourLog.info("Server configured to " + (appProperties.getAllow_override_default_search_params() ? "allow" : "deny") + " overriding default search params");
+    ourLog.info("Server configured to " + (appProperties.getAuto_create_placeholder_reference_targets() ? "allow" : "disable") + " auto-creating placeholder references");
 
     if (appProperties.getSubscription().getEmail() != null) {
       AppProperties.Subscription.Email email = appProperties.getSubscription().getEmail();
@@ -61,6 +61,10 @@ public class FhirServerConfigCommon {
     if (appProperties.getSubscription().getEmail() != null) {
       ourLog.info("Email subscriptions enabled");
     }
+    
+    if (appProperties.getEnable_index_contained_resource() == Boolean.TRUE) {
+        ourLog.info("Indexed on contained resource enabled");
+      }
   }
 
   /**
@@ -140,8 +144,8 @@ public class FhirServerConfigCommon {
 
   @Primary
   @Bean
-  public HibernateDialectProvider jpaStarterDialectProvider(LocalContainerEntityManagerFactoryBean myEntityManagerFactory) {
-    return new JpaHibernateDialectProvider(myEntityManagerFactory);
+  public HibernatePropertiesProvider jpaStarterDialectProvider(LocalContainerEntityManagerFactoryBean myEntityManagerFactory) {
+    return new JpaHibernatePropertiesProvider(myEntityManagerFactory);
   }
 
   @Bean
@@ -162,6 +166,9 @@ public class FhirServerConfigCommon {
       modelConfig.addSupportedSubscriptionType(Subscription.SubscriptionChannelType.EMAIL);
     }
 
+    modelConfig.setNormalizedQuantitySearchLevel(appProperties.getNormalized_quantity_search_level());
+    
+    modelConfig.setIndexOnContainedResources(appProperties.getEnable_index_contained_resource());
     return modelConfig;
   }
 
