@@ -1,6 +1,5 @@
 spring:
   datasource:
-<<<<<<< HEAD
     url: ${FHIR_DB_URL}
     username: ${FHIR_DB_USER}
     password: ${FHIR_DB_PASSWORD}
